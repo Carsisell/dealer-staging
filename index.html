@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swope Toyota | Page Staging Tool</title>
+    <!-- We use this script to compress your web designs into the URL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    
+    <style>
+        :root {
+            --red: #e5001c;
+            --dark: #16181b;
+            --gray: #f3f5f7;
+            --border: #d9dde2;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--dark);
+            color: white;
+        }
+        
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background-color: var(--dark);
+            border-bottom: 1px solid #333;
+        }
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        h1 {
+            font-size: 16px;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        button {
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #444;
+        }
+        button.primary {
+            background-color: var(--red);
+            border-color: var(--red);
+        }
+        button.primary:hover {
+            background-color: #c40018;
+        }
+        
+        .workspace {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 55px);
+        }
+        .editor-container {
+            width: 50%;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-header {
+            padding: 8px 16px;
+            background: #222;
+            font-size: 12px;
+            color: #888;
+            border-bottom: 1px solid #333;
+        }
+        textarea {
+            flex: 1;
+            width: 100%;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 16px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+        }
+        
+        .preview-container {
+            width: 50%;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <h1>SWOPE TOYOTA STAGING</h1>
+        </div>
+        <div class="toolbar-right">
+            <button id="toggleViewBtn" onclick="toggleView()">WP Container (1200px)</button>
+            <button onclick="copyCode()">Copy Code</button>
+            <button class="primary" onclick="shareLink()">Share Link</button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="editor-container">
+            <div class="editor-header">HTML / CSS Editor (Type here)</div>
+            <textarea id="codeEditor" spellcheck="false" oninput="updatePreview()"></textarea>
+        </div>
+        <div class="preview-container">
+            <iframe id="livePreview"></iframe>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Link copied to clipboard!</div>
+
+    <script>
+        const editor = document.getElementById('codeEditor');
+        const preview = document.getElementById('livePreview');
+        const toggleBtn = document.getElementById('toggleViewBtn');
+        let isWpContainer = false;
+
+        // This is the default example code that confused you! 
+        // It populates inside the textarea when the app loads.
+        const defaultCode = `<style>
+  .hero { 
+    text-align: center; 
+    padding: 60px 20px; 
+    font-family: Arial, sans-serif; 
+    background: #f3f5f7;
+    border-radius: 12px;
+  }
+  h1 { color: #e5001c; }
+</style>
+
+<div class="hero">
+  <h1>Welcome to your Staging Tool</h1>
+  <p>Start typing your campaign HTML/CSS here. The preview will update instantly!</p>
+</div>`;
+
+        function init() {
+            // This checks the web address to see if a compressed code string is attached
+            const params = new URLSearchParams(window.location.search);
+            const compressedCode = params.get('p');
+            
+            if (compressedCode) {
+                // If it finds a code in the URL, it decompresses it into the editor
+                editor.value = LZString.decompressFromEncodedURIComponent(compressedCode);
+            } else {
+                // Otherwise, it just loads the welcome message
+                editor.value = defaultCode;
+            }
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const rawCode = editor.value;
+            let previewHTML = rawCode;
+            
+            // If the WP Container button is clicked, wrap the code to simulate Dealer Inspire's max-width
+            if (isWpContainer) {
+                previewHTML = `<div style="max-width: 1200px; margin: 0 auto; background: white; min-height: 100vh;">${rawCode}</div>`;
+                // Add a light gray background to the main body so you can clearly see the 1200px edges
+                previewHTML = `<style>body{background:#e0e0e0; margin:0;} *{box-sizing:border-box;}</style>` + previewHTML;
+            } else {
+                previewHTML = `<style>body{margin:0;} *{box-sizing:border-box;}</style>` + previewHTML;
+            }
+
+            // Push the generated code into the preview window
+            const doc = preview.contentWindow.document;
+            doc.open();
+            doc.write(previewHTML);
+            doc.close();
+        }
+
+        function toggleView() {
+            isWpContainer = !isWpContainer;
+            if (isWpContainer) {
+                toggleBtn.textContent = "Full Width";
+                toggleBtn.style.backgroundColor = "#555";
+            } else {
+                toggleBtn.textContent = "WP Container (1200px)";
+                toggleBtn.style.backgroundColor = "#333";
+            }
+            updatePreview();
+        }
+
+        function copyCode() {
+            // Copies the raw code for pasting into WordPress
+            navigator.clipboard.writeText(editor.value).then(() => {
+                showToast("HTML code copied! You can now paste this into WordPress.");
+            });
+        }
+
+        function shareLink() {
+            // Compresses the entire code block and attaches it to the URL
+            const compressedCode = LZString.compressToEncodedURIComponent(editor.value);
+            const shareUrl = window.location.origin + window.location.pathname + "?p=" + compressedCode;
+            
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showToast("Shareable link copied! Send this to your team.");
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.opacity = 1;
+            setTimeout(() => {
+                toast.style.opacity = 0;
+            }, 3500);
+        }
+
+        // Run the init function as soon as the tool loads
+        window.onload = init;
+    </script>
+</body>
+</html>
