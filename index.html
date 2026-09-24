@@ -176,9 +176,15 @@
 </div>`;
 
         function init() {
-            // This checks the web address to see if a compressed code string is attached
-            const params = new URLSearchParams(window.location.search);
-            const compressedCode = params.get('p');
+            // Check for code in the URL hash (#) instead of search (?) to avoid server length limits
+            let compressedCode = null;
+            if (window.location.hash.startsWith('#p=')) {
+                compressedCode = window.location.hash.substring(3);
+            } else {
+                // Fallback just in case you open an older link that used ?p=
+                const params = new URLSearchParams(window.location.search);
+                compressedCode = params.get('p');
+            }
             
             if (compressedCode) {
                 // If it finds a code in the URL, it decompresses it into the editor
@@ -230,9 +236,9 @@
         }
 
         function shareLink() {
-            // Compresses the entire code block and attaches it to the URL
+            // Compresses the entire code block and attaches it to the URL hash (#)
             const compressedCode = LZString.compressToEncodedURIComponent(editor.value);
-            const shareUrl = window.location.origin + window.location.pathname + "?p=" + compressedCode;
+            const shareUrl = window.location.origin + window.location.pathname + "#p=" + compressedCode;
             
             navigator.clipboard.writeText(shareUrl).then(() => {
                 showToast("Shareable link copied! Send this to your team.");
